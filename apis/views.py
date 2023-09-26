@@ -2,17 +2,13 @@ from django.contrib.auth.models import User, Group
 from rest_framework import viewsets
 from rest_framework import permissions
 from apis.serializers import UserSerializer, GroupSerializer
-
-# import local data
-from .serializers import STTSerializer, TTSSerializer, UploadSerializer
 from .models import STTModel, TTSModel
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
-from django.core.files.storage import default_storage
-from django.http import Http404
+import os
+import datetime
 
-# from .serializers import UploadSerializer
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -33,6 +29,7 @@ class GroupViewSet(viewsets.ModelViewSet):
     serializer_class = GroupSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+
 class TTSInference(APIView):
     def post(self, request):
         text = request.data.get("text")
@@ -43,32 +40,42 @@ class TTSInference(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if len(text) > 300:
+            return Response(
+                {"error": "text must be less than 300 characters."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        task = TTSModel.objects.create(text=text, user=request.user)
+        task.save()
         return Response({"text": text}, status=status.HTTP_200_OK)
 
-class STTView(APIView):
-    """
-    Retrieve, update or delete a snippet instance.
-    """
-    def get_object(self, pk):
-        try:
-            return STTModel.objects.get(pk=pk)
-        except STTModel.DoesNotExist:
-            raise Http404
 
-    def get(self, request, pk, format=None):
-        snippet = self.get_object(pk)
-        serializer = STTSerializer(snippet)
-        return Response(serializer.data)
+class STTInference(APIView):
+    def post(self, request):
+        audio = self.request.FILES.get("audio")
+        if not audio:
+            return Response(
+                {"error": "audio required to run STT."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        ext = os.path.splitext(audio.name)[1]  # [0] returns path+filename
+        print("audio => ", type(audio))
+        valid_extensions = [".wav", ".mp3"]
+        if not ext.lower() in valid_extensions:
+            # print(ext.lower())
+            return Response(
+                {"error": "audio must be if wav or mp3 type."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    def post(self, request, format=None):
-        serializer = STTSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-class STTViewSet(viewsets.ModelViewSet):
-    queryset = STTModel.objects.all()
-    serializer_class = STTSerializer
+        basename = request.user.username
+        suffix = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        audio.name = (
+            "_".join([basename, suffix]) + ext
+        )  # e.g. 'mylogfile_120508_171442'
+        task = STTModel.objects.create(audio=audio, user=request.user)
+        task.save()
 
-    def pre_save(self, obj):
-        obj.audio = self.request.FILES.get('audio')
+        # run inference
+        return Response({"text": "bla bla"}, status=status.HTTP_200_OK)
