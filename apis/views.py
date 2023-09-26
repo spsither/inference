@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.response import Response
 import os
 import datetime
-
+from django.http import FileResponse
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -48,7 +48,11 @@ class TTSInference(APIView):
 
         task = TTSModel.objects.create(text=text, user=request.user)
         task.save()
-        return Response({"text": text}, status=status.HTTP_200_OK)
+
+        # run inference
+        task.audio = STTModel.objects.get(id=14).audio
+        task.save()
+        return FileResponse(task.audio.open())
 
 
 class STTInference(APIView):
