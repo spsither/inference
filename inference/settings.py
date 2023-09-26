@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-    'oauth2_provider',
     'apis',
 ]
 
@@ -139,3 +138,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     )
 }
+
+import os
+MEDIA_ROOT = os.path.join(BASE_DIR, 'audio')
+MEDIA_URL = '/audio/'
