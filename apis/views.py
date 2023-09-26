@@ -59,8 +59,7 @@ class STTInference(APIView):
                 {"error": "audio required to run STT."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        ext = os.path.splitext(audio.name)[1]  # [0] returns path+filename
-        print("audio => ", type(audio))
+        ext = os.path.splitext(audio.name)[1]
         valid_extensions = [".wav", ".mp3"]
         if not ext.lower() in valid_extensions:
             # print(ext.lower())
@@ -71,11 +70,11 @@ class STTInference(APIView):
 
         basename = request.user.username
         suffix = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        audio.name = (
-            "_".join([basename, suffix]) + ext
-        )  # e.g. 'mylogfile_120508_171442'
+        audio.name = "_".join([basename, suffix]) + ext
         task = STTModel.objects.create(audio=audio, user=request.user)
         task.save()
 
         # run inference
-        return Response({"text": "bla bla"}, status=status.HTTP_200_OK)
+        task.text = "bla bla"
+        task.save()
+        return Response({"text": task.text}, status=status.HTTP_200_OK)
