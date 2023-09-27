@@ -9,7 +9,9 @@ from rest_framework.response import Response
 import os
 import datetime
 from django.http import FileResponse
-
+import magic
+from django.conf import settings
+import pathlib
 class UserViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows users to be viewed or edited.
@@ -57,21 +59,31 @@ class TTSInference(APIView):
 
 class STTInference(APIView):
     def post(self, request):
+        
+        # validation
         audio = self.request.FILES.get("audio")
         if not audio:
             return Response(
                 {"error": "audio required to run STT."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        ext = os.path.splitext(audio.name)[1]
-        valid_extensions = [".wav", ".mp3"]
-        if not ext.lower() in valid_extensions:
-            # print(ext.lower())
+        ext = pathlib.Path(audio.name).suffix
+        if not ext.lower() in settings.VALID_EXTENSIONS:
             return Response(
-                {"error": "audio must be if wav or mp3 type."},
+                {"error": f"audio must have {' or '.join(settings.VALID_EXTENSIONS)} extension."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        frag = request.FILES['audio'].read(1024)
+        content_type = magic.from_buffer(frag, mime=True)
+        print(content_type)
+        if not content_type in settings.VALID_MIME_TYPES:
+            return Response(
+                {"error": f"audio must be of {' or '.join(settings.VALID_EXTENSIONS)} type."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # save audio
         basename = request.user.username
         suffix = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         audio.name = "_".join([basename, suffix]) + ext
@@ -79,6 +91,8 @@ class STTInference(APIView):
         task.save()
 
         # run inference
+
+        # update task
         task.text = "bla bla"
         task.save()
         return Response({"text": task.text}, status=status.HTTP_200_OK)
