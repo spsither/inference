@@ -146,6 +146,7 @@ VALID_MIME_TYPES = [
     "audio/wav",
     "audio/mp3",
     "audio/mpeg",
+    "audio/x-wav",
 ]
 
 VALID_EXTENSIONS = [
