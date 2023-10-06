@@ -11,6 +11,9 @@ from django.http import FileResponse
 import magic
 from django.conf import settings
 import pathlib
+from transformers import pipeline
+
+generator = pipeline(model="openpecha/wav2vec2_run8")
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -96,9 +99,11 @@ class STTInference(APIView):
         task.save()
 
         # run inference
-
+        opt = generator(task.audio.path)
+        inf = opt["text"]
+        print(inf)
         # update task
-        task.text = "bla bla"
+        task.text = inf
         task.state = State.DONE
         task.save()
         return Response({"text": task.text}, status=status.HTTP_200_OK)
